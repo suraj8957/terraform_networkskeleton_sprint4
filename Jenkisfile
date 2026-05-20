@@ -14,7 +14,6 @@ pipeline {
     environment {
 
         AWS_REGION = "us-east-1"
-
         TF_IN_AUTOMATION = "true"
     }
 
@@ -121,7 +120,10 @@ pipeline {
 
                 dir('network-skeleton') {
 
-                    sh 'terraform plan'
+                    sh '''
+                        terraform plan \
+                        -var-file="terraform.tfvars"
+                    '''
                 }
             }
         }
@@ -144,6 +146,7 @@ pipeline {
                     sh '''
                         terraform apply \
                         -target=aws_vpc.dev_vpc \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -173,6 +176,7 @@ pipeline {
                         -target=aws_subnet.backend_subnet \
                         -target=aws_subnet.middleware_subnet \
                         -target=aws_subnet.database_subnet \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -197,6 +201,7 @@ pipeline {
                     sh '''
                         terraform apply \
                         -target=aws_internet_gateway.igw \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -222,6 +227,7 @@ pipeline {
                         terraform apply \
                         -target=aws_eip.nat_eip \
                         -target=aws_nat_gateway.nat_gateway \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -247,6 +253,7 @@ pipeline {
                         terraform apply \
                         -target=aws_route_table.public_route_table \
                         -target=aws_route_table.private_route_table \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -276,6 +283,7 @@ pipeline {
                         -target=aws_security_group.backend_sg \
                         -target=aws_security_group.middleware_sg \
                         -target=aws_security_group.database_sg \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -301,6 +309,7 @@ pipeline {
                         terraform apply \
                         -target=tls_private_key.ssh_key \
                         -target=aws_key_pair.dev_key \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -325,6 +334,7 @@ pipeline {
                     sh '''
                         terraform apply \
                         -target=aws_instance.bastion \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -349,6 +359,7 @@ pipeline {
                     sh '''
                         terraform apply \
                         -target=aws_lb.alb \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -374,6 +385,7 @@ pipeline {
                         terraform apply \
                         -target=aws_route53_zone.main \
                         -target=aws_route53_record.dev_record \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
@@ -397,6 +409,7 @@ pipeline {
 
                     sh '''
                         terraform destroy \
+                        -var-file="terraform.tfvars" \
                         -auto-approve
                     '''
                 }
