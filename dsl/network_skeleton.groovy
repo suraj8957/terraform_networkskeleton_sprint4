@@ -28,7 +28,7 @@ pipelineJob('network-skeleton-pipeline') {
                 }
             }
 
-            scriptPath('Jenkinsfile')
+            scriptPath('network-skeleton/Jenkinsfile')
         }
     }
 }
