@@ -1,0 +1,89 @@
+pipeline {
+
+    agent any
+
+    environment {
+
+        AWS_REGION = "us-east-1"
+    }
+
+    stages {
+
+        stage('Checkout') {
+
+            steps {
+
+                git branch: 'terraform_network_skeleton_spint4',
+                url: 'git@github.com:suraj8957/terraform_networkskeleton_sprint4.git'
+            }
+        }
+
+        stage('Terraform Init') {
+
+            steps {
+
+                dir('network-skeleton') {
+
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform Format') {
+
+            steps {
+
+                dir('network-skeleton') {
+
+                    sh 'terraform fmt -recursive'
+                }
+            }
+        }
+
+        stage('Terraform Validate') {
+
+            steps {
+
+                dir('network-skeleton') {
+
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+
+            steps {
+
+                dir('network-skeleton') {
+
+                    sh 'terraform plan'
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+
+            steps {
+
+                dir('network-skeleton') {
+
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+    }
+
+    post {
+
+        success {
+
+            echo 'Terraform Network Skeleton Deployment Successful'
+        }
+
+        failure {
+
+            echo 'Terraform Deployment Failed'
+        }
+    }
+}
