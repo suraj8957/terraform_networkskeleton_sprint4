@@ -1,6 +1,15 @@
 pipelineJob('network-skeleton-pipeline') {
 
-    description('Pipeline for Terraform Network Skeleton Deployment')
+    description('Terraform Network Skeleton Deployment Pipeline')
+
+    parameters {
+
+        choiceParam(
+            'ACTION',
+            ['plan', 'apply', 'destroy'],
+            'Select Terraform Action'
+        )
+    }
 
     definition {
 
