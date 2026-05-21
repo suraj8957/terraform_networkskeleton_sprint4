@@ -2,6 +2,11 @@ pipeline {
 
     agent any
 
+    options {
+        timestamps()
+        timeout(time: 90, unit: 'MINUTES')
+    }
+
     parameters {
 
         choice(
@@ -13,7 +18,7 @@ pipeline {
 
     environment {
 
-        AWS_REGION = "us-east-1"
+        AWS_REGION       = "us-east-1"
         TF_IN_AUTOMATION = "true"
     }
 
@@ -26,7 +31,6 @@ pipeline {
         stage('Clean Workspace') {
 
             steps {
-
                 cleanWs()
             }
         }
@@ -39,8 +43,10 @@ pipeline {
 
             steps {
 
-                git branch: 'terraform_network_skeleton_spint4',
-                url: 'git@github.com:suraj8957/terraform_networkskeleton_sprint4.git'
+                git(
+                    branch: 'terraform_network_skeleton_spint4',
+                    url: 'git@github.com:suraj8957/terraform_networkskeleton_sprint4.git'
+                )
             }
         }
 
@@ -135,7 +141,6 @@ pipeline {
         stage('Create VPC') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -160,7 +165,6 @@ pipeline {
         stage('Create Subnets') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -190,7 +194,6 @@ pipeline {
         stage('Create Internet Gateway') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -215,7 +218,6 @@ pipeline {
         stage('Create NAT Gateway') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -241,7 +243,6 @@ pipeline {
         stage('Create Route Tables') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -267,7 +268,6 @@ pipeline {
         stage('Create Security Groups') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -297,7 +297,6 @@ pipeline {
         stage('Create SSH Key') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -323,7 +322,6 @@ pipeline {
         stage('Create Bastion Host') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -348,7 +346,6 @@ pipeline {
         stage('Create Load Balancer') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -373,7 +370,6 @@ pipeline {
         stage('Create Route53') {
 
             when {
-
                 expression { params.ACTION == 'apply' }
             }
 
@@ -393,13 +389,28 @@ pipeline {
         }
 
         // =========================================
+        // DESTROY APPROVAL
+        // =========================================
+
+        stage('Destroy Approval') {
+
+            when {
+                expression { params.ACTION == 'destroy' }
+            }
+
+            steps {
+
+                input message: 'Are you sure you want to destroy infrastructure?'
+            }
+        }
+
+        // =========================================
         // DESTROY INFRASTRUCTURE
         // =========================================
 
         stage('Destroy Infrastructure') {
 
             when {
-
                 expression { params.ACTION == 'destroy' }
             }
 
@@ -432,6 +443,7 @@ pipeline {
         always {
 
             echo 'Pipeline Execution Completed'
+            cleanWs()
         }
     }
 }
