@@ -1,449 +1,438 @@
 pipeline {
 
-    agent any
+agent any
 
-    options {
-        timestamps()
-        timeout(time: 90, unit: 'MINUTES')
-    }
+parameters {
 
-    parameters {
+    choice(
+        name: 'ACTION',
+        choices: ['plan', 'apply', 'destroy'],
+        description: 'Select Terraform Action'
+    )
+}
 
-        choice(
-            name: 'ACTION',
-            choices: ['plan', 'apply', 'destroy'],
-            description: 'Select Terraform Action'
-        )
-    }
+environment {
 
-    environment {
+    AWS_REGION = "us-east-1"
+    TF_IN_AUTOMATION = "true"
+}
 
-        AWS_REGION       = "us-east-1"
-        TF_IN_AUTOMATION = "true"
-    }
+stages {
 
-    stages {
+    // =========================================
+    // CLEAN WORKSPACE
+    // =========================================
 
-        // =========================================
-        // CLEAN WORKSPACE
-        // =========================================
+    stage('Clean Workspace') {
 
-        stage('Clean Workspace') {
+        steps {
 
-            steps {
-                cleanWs()
-            }
-        }
-
-        // =========================================
-        // CHECKOUT CODE
-        // =========================================
-
-        stage('Checkout Code') {
-
-            steps {
-
-                git(
-                    branch: 'terraform_network_skeleton_spint4',
-                    url: 'git@github.com:suraj8957/terraform_networkskeleton_sprint4.git'
-                )
-            }
-        }
-
-        // =========================================
-        // TERRAFORM VERSION
-        // =========================================
-
-        stage('Terraform Version') {
-
-            steps {
-
-                sh 'terraform version'
-            }
-        }
-
-        // =========================================
-        // TERRAFORM INIT
-        // =========================================
-
-        stage('Terraform Init') {
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh 'terraform init'
-                }
-            }
-        }
-
-        // =========================================
-        // TERRAFORM FORMAT
-        // =========================================
-
-        stage('Terraform Format') {
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh 'terraform fmt -recursive'
-                }
-            }
-        }
-
-        // =========================================
-        // TERRAFORM VALIDATE
-        // =========================================
-
-        stage('Terraform Validate') {
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh 'terraform validate'
-                }
-            }
-        }
-
-        // =========================================
-        // TERRAFORM PLAN
-        // =========================================
-
-        stage('Terraform Plan') {
-
-            when {
-
-                anyOf {
-
-                    expression { params.ACTION == 'plan' }
-                    expression { params.ACTION == 'apply' }
-                }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform plan \
-                        -var-file="terraform.tfvars"
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE VPC
-        // =========================================
-
-        stage('Create VPC') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_vpc.dev_vpc \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE SUBNETS
-        // =========================================
-
-        stage('Create Subnets') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_subnet.public_subnet_az1 \
-                        -target=aws_subnet.public_subnet_az2 \
-                        -target=aws_subnet.frontend_subnet \
-                        -target=aws_subnet.backend_subnet \
-                        -target=aws_subnet.middleware_subnet \
-                        -target=aws_subnet.database_subnet \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE INTERNET GATEWAY
-        // =========================================
-
-        stage('Create Internet Gateway') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_internet_gateway.igw \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE NAT GATEWAY
-        // =========================================
-
-        stage('Create NAT Gateway') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_eip.nat_eip \
-                        -target=aws_nat_gateway.nat_gateway \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE ROUTE TABLES
-        // =========================================
-
-        stage('Create Route Tables') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_route_table.public_route_table \
-                        -target=aws_route_table.private_route_table \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE SECURITY GROUPS
-        // =========================================
-
-        stage('Create Security Groups') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_security_group.alb_sg \
-                        -target=aws_security_group.bastion_sg \
-                        -target=aws_security_group.frontend_sg \
-                        -target=aws_security_group.backend_sg \
-                        -target=aws_security_group.middleware_sg \
-                        -target=aws_security_group.database_sg \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE SSH KEY
-        // =========================================
-
-        stage('Create SSH Key') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=tls_private_key.ssh_key \
-                        -target=aws_key_pair.dev_key \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE BASTION HOST
-        // =========================================
-
-        stage('Create Bastion Host') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_instance.bastion \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE LOAD BALANCER
-        // =========================================
-
-        stage('Create Load Balancer') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_lb.alb \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // CREATE ROUTE53
-        // =========================================
-
-        stage('Create Route53') {
-
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform apply \
-                        -target=aws_route53_zone.main \
-                        -target=aws_route53_record.dev_record \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-
-        // =========================================
-        // DESTROY APPROVAL
-        // =========================================
-
-        stage('Destroy Approval') {
-
-            when {
-                expression { params.ACTION == 'destroy' }
-            }
-
-            steps {
-
-                input message: 'Are you sure you want to destroy infrastructure?'
-            }
-        }
-
-        // =========================================
-        // DESTROY INFRASTRUCTURE
-        // =========================================
-
-        stage('Destroy Infrastructure') {
-
-            when {
-                expression { params.ACTION == 'destroy' }
-            }
-
-            steps {
-
-                dir('network-skeleton') {
-
-                    sh '''
-                        terraform destroy \
-                        -var-file="terraform.tfvars" \
-                        -auto-approve
-                    '''
-                }
-            }
-        }
-    }
-
-    post {
-
-        success {
-
-            echo 'Terraform Network Skeleton Deployment Successful'
-        }
-
-        failure {
-
-            echo 'Terraform Deployment Failed'
-        }
-
-        always {
-
-            echo 'Pipeline Execution Completed'
             cleanWs()
         }
     }
+
+    // =========================================
+    // CHECKOUT CODE
+    // =========================================
+
+    stage('Checkout Code') {
+
+        steps {
+
+            git branch: 'terraform_network_skeleton_spint4',
+            url: 'git@github.com:suraj8957/terraform_networkskeleton_sprint4.git'
+        }
+    }
+
+    // =========================================
+    // TERRAFORM VERSION
+    // =========================================
+
+    stage('Terraform Version') {
+
+        steps {
+
+            sh 'terraform version'
+        }
+    }
+
+    // =========================================
+    // TERRAFORM INIT
+    // =========================================
+
+    stage('Terraform Init') {
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh 'terraform init'
+            }
+        }
+    }
+
+    // =========================================
+    // TERRAFORM FORMAT
+    // =========================================
+
+    stage('Terraform Format') {
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh 'terraform fmt -recursive'
+            }
+        }
+    }
+
+    // =========================================
+    // TERRAFORM VALIDATE
+    // =========================================
+
+    stage('Terraform Validate') {
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh 'terraform validate'
+            }
+        }
+    }
+
+    // =========================================
+    // TERRAFORM PLAN
+    // =========================================
+
+    stage('Terraform Plan') {
+
+        when {
+
+            anyOf {
+
+                expression { params.ACTION == 'plan' }
+                expression { params.ACTION == 'apply' }
+            }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform plan \
+                    -var-file="terraform.tfvars"
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE VPC
+    // =========================================
+
+    stage('Create VPC') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_vpc.dev_vpc \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE SUBNETS
+    // =========================================
+
+    stage('Create Subnets') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_subnet.public_subnet_az1 \
+                    -target=aws_subnet.public_subnet_az2 \
+                    -target=aws_subnet.frontend_subnet \
+                    -target=aws_subnet.backend_subnet \
+                    -target=aws_subnet.middleware_subnet \
+                    -target=aws_subnet.database_subnet \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE INTERNET GATEWAY
+    // =========================================
+
+    stage('Create Internet Gateway') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_internet_gateway.igw \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE NAT GATEWAY
+    // =========================================
+
+    stage('Create NAT Gateway') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_eip.nat_eip \
+                    -target=aws_nat_gateway.nat_gateway \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE ROUTE TABLES
+    // =========================================
+
+    stage('Create Route Tables') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_route_table.public_route_table \
+                    -target=aws_route_table.private_route_table \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE SECURITY GROUPS
+    // =========================================
+
+    stage('Create Security Groups') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_security_group.alb_sg \
+                    -target=aws_security_group.bastion_sg \
+                    -target=aws_security_group.frontend_sg \
+                    -target=aws_security_group.backend_sg \
+                    -target=aws_security_group.middleware_sg \
+                    -target=aws_security_group.database_sg \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE SSH KEY
+    // =========================================
+
+    stage('Create SSH Key') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=tls_private_key.ssh_key \
+                    -target=aws_key_pair.dev_key \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE BASTION HOST
+    // =========================================
+
+    stage('Create Bastion Host') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_instance.bastion \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE LOAD BALANCER
+    // =========================================
+
+    stage('Create Load Balancer') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_lb.alb \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // CREATE ROUTE53
+    // =========================================
+
+    stage('Create Route53') {
+
+        when {
+
+            expression { params.ACTION == 'apply' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform apply \
+                    -target=aws_route53_zone.main \
+                    -target=aws_route53_record.dev_record \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+
+    // =========================================
+    // DESTROY INFRASTRUCTURE
+    // =========================================
+
+    stage('Destroy Infrastructure') {
+
+        when {
+
+            expression { params.ACTION == 'destroy' }
+        }
+
+        steps {
+
+            dir('network-skeleton') {
+
+                sh '''
+                    terraform destroy \
+                    -var-file="terraform.tfvars" \
+                    -auto-approve
+                '''
+            }
+        }
+    }
+}
+
+post {
+
+    success {
+
+        echo 'Terraform Network Skeleton Deployment Successful'
+    }
+
+    failure {
+
+        echo 'Terraform Deployment Failed'
+    }
+
+    always {
+
+        echo 'Pipeline Execution Completed'
+    }
+}
+
 }
